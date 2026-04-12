@@ -13,19 +13,38 @@ MONTH_CN = {1:'正月',2:'二月',3:'三月',4:'四月',5:'五月',6:'六月',7:
 DAY_CN = {1:'初一',2:'初二',3:'初三',4:'初四',5:'初五',6:'初六',7:'初七',8:'初八',9:'初九',10:'初十',11:'十一',12:'十二',13:'十三',14:'十四',15:'十五',16:'十六',17:'十七',18:'十八',19:'十九',20:'二十',21:'廿一',22:'廿二',23:'廿三',24:'廿四',25:'廿五',26:'廿六',27:'廿七',28:'廿八',29:'廿九',30:'三十'}
 
 def header(name, tz, desc, color):
-    return '
-'.join(['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Perplexity//Spiritual Practice Calendar//CN','CALSCALE:GREGORIAN','METHOD:PUBLISH',f'X-WR-CALNAME:{name}',f'X-WR-TIMEZONE:{tz}',f'X-WR-CALDESC:{desc}',f'X-APPLE-CALENDAR-COLOR:{color}']) + '
-'
+    return '\n'.join([
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Perplexity//Spiritual Practice Calendar//CN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        f'X-WR-CALNAME:{name}',
+        f'X-WR-TIMEZONE:{tz}',
+        f'X-WR-CALDESC:{desc}',
+        f'X-APPLE-CALENDAR-COLOR:{color}',
+    ]) + '\n'
 
 def event_block(uid, start_date, end_date, summary, description):
-    return '
-'.join(['BEGIN:VEVENT',f'UID:{uid}',f'DTSTAMP:{NOWSTAMP}',f'DTSTART;VALUE=DATE:{start_date.strftime("%Y%m%d")}',f'DTEND;VALUE=DATE:{end_date.strftime("%Y%m%d")}',f'SUMMARY:{summary}',f'DESCRIPTION:{description}','TRANSP:TRANSPARENT','END:VEVENT'])
+    return '\n'.join([
+        'BEGIN:VEVENT',
+        f'UID:{uid}',
+        f'DTSTAMP:{NOWSTAMP}',
+        f'DTSTART;VALUE=DATE:{start_date.strftime("%Y%m%d")}',
+        f'DTEND;VALUE=DATE:{end_date.strftime("%Y%m%d")}',
+        f'SUMMARY:{summary}',
+        f'DESCRIPTION:{description}',
+        'TRANSP:TRANSPARENT',
+        'END:VEVENT'
+    ])
 
 def write_calendar(path, cal_name, tz, desc, color, events):
-    path.write_text(header(cal_name,tz,desc,color) + '
-'.join(events) + '
-END:VCALENDAR
-', encoding='utf-8')
+    path.write_text(
+        header(cal_name, tz, desc, color) +
+        '\n'.join(events) +
+        '\nEND:VCALENDAR\n',
+        encoding='utf-8'
+    )
 
 def extract_events(text):
     return re.findall(r'BEGIN:VEVENT\n.*?\nEND:VEVENT', text, flags=re.S)
