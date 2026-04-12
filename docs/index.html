@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>修行日历管理台</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2b;--panel2:#17233a;--text:#eef3ff;--muted:#aeb9d6;--line:#2b3a5a;--green:#34c759;--orange:#ff9f0a;--blue:#0a84ff;--yellow:#ffd60a;--gray:#8e8e93}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:linear-gradient(180deg,#08101d,#11182a);color:var(--text)}.wrap{max-width:1180px;margin:0 auto;padding:24px}.hero,.section{background:#111a2b;border:1px solid var(--line);border-radius:20px;padding:22px}.hero h1{margin:0 0 10px;font-size:clamp(28px,4vw,46px)}.muted,.small{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:16px}.card{background:#17233a;border:1px solid var(--line);border-radius:14px;padding:14px}.badge{display:inline-block;padding:5px 10px;border-radius:999px;font-size:13px;font-weight:700}.g{background:rgba(52,199,89,.18);color:#95f1ae}.o{background:rgba(255,159,10,.18);color:#ffd19a}.b{background:rgba(10,132,255,.18);color:#9dcbff}.y{background:rgba(255,214,10,.18);color:#ffe56a}.k{background:rgba(142,142,147,.18);color:#ddd}.section{margin-top:20px}button{background:#1f3257;color:#eef3ff;border:1px solid #3d5e97;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}button:hover{background:#2d4677}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}input,textarea{width:100%;background:#17233a;color:#eef3ff;border:1px solid var(--line);border-radius:10px;padding:10px}textarea{min-height:70px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:800px){table,thead,tbody,tr,th,td{display:block}thead{display:none}tr{border-bottom:1px solid var(--line)}td{border-bottom:none}}</style></head>
+<body><div class="wrap"><div class="hero"><h1>修行日历管理台</h1><p class="muted">这个页面用于维护日历文件：灵性事件可直接在这里编辑后下载；断食日按<span class="mono">北京时间 / Asia/Shanghai</span>标准自动更新；合并版会把所有类别汇总。</p><div class="grid"><div class="card"><span class="badge g">六斋日（绿色）</span></div><div class="card"><span class="badge o">十斋日（橘色）</span><div class="small">已含三长斋月</div></div><div class="card"><span class="badge b">灵性（蓝色）</span></div><div class="card"><span class="badge y">断食日（黄色）</span><div class="small">按北京时间标准自动更新，且包含变体条目</div></div><div class="card"><span class="badge k">修行日历（合并）</span></div></div></div>
+<div class="section"><h2>使用方式</h2><ol><li>灵性事件：在本页编辑后下载新文件，再上传替换 <span class="mono">docs/</span> 里的同名文件。</li><li>断食日：仓库已附带自动更新流程，默认每周更新一次；你也可以在 GitHub Actions 手动运行。</li><li>合并版：如果灵性改动了，记得重新下载合并版并一起替换。</li></ol><div class="toolbar"><button id="loadBtn">载入当前文件</button><button id="addBtn">新增灵性事件</button><button id="saveSpiritual">下载灵性文件</button><button id="saveCombined">下载合并文件</button></div><div id="status" class="small">尚未载入。</div></div>
+<div class="section"><h2>灵性（蓝色）</h2><table id="tbl"><thead><tr><th>日期</th><th>标题</th><th>说明</th><th>操作</th></tr></thead><tbody></tbody></table></div></div>
+<script>
+const state={spiritual:[],six:'',ten:'',fast:''};
+function uid(date){return `spiritual-${date}-${Math.random().toString(36).slice(2,8)}@jitong-calendar`}
+function nextDay(dateStr){const d=new Date(dateStr+'T00:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replaceAll('-','')}
+function icsDate(dateStr){return dateStr.replaceAll('-','')}
+function nowStamp(){return new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z')}
+function esc(s){return (s||'').replace(/\/g,'\\').replace(/
+/g,'\n').replace(/,/g,'\,').replace(/;/g,'\;')}
+function unesc(s){return (s||'').replace(/\n/g,'
+').replace(/\,/g,',').replace(/\;/g,';').replace(/\\/g,'\')}
+function parseEvents(text){return [...text.matchAll(/BEGIN:VEVENT
+([\s\S]*?)
+END:VEVENT/g)].map(m=>m[1]).map(ev=>({uid:(ev.match(/UID:(.*)/)||[])[1]||'',date:((ev.match(/DTSTART;VALUE=DATE:(\d{8})/)||[])[1]||'').replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'),title:unesc((ev.match(/SUMMARY:(.*)/)||[])[1]||''),desc:unesc((ev.match(/DESCRIPTION:(.*)/)||[])[1]||'')})).filter(x=>x.date)}
+function render(){const tb=document.querySelector('#tbl tbody');tb.innerHTML='';state.spiritual.sort((a,b)=>a.date.localeCompare(b.date)).forEach((r,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td><input type="date" value="${r.date}"></td><td><input type="text" value="${r.title}"></td><td><textarea>${r.desc||''}</textarea></td><td><button>删除</button></td>`;const [d,t,x,b]=tr.querySelectorAll('input,textarea,button');d.oninput=()=>state.spiritual[i].date=d.value;t.oninput=()=>state.spiritual[i].title=t.value;x.oninput=()=>state.spiritual[i].desc=x.value;b.onclick=()=>{state.spiritual.splice(i,1);render()};tb.appendChild(tr)})}
+function header(name,tz,desc,color){return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Perplexity//Spiritual Practice Calendar//CN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:${name}
+X-WR-TIMEZONE:${tz}
+X-WR-CALDESC:${desc}
+X-APPLE-CALENDAR-COLOR:${color}
+`}
+function spiritualICS(){let out=header('灵性（蓝色）','America/New_York','新月、满月、星门与自定义灵性事件。建议在 Apple Calendar 设为蓝色。','#0A84FF');for(const e of state.spiritual){out+=`BEGIN:VEVENT
+UID:${e.uid||uid(e.date)}
+DTSTAMP:${nowStamp()}
+DTSTART;VALUE=DATE:${icsDate(e.date)}
+DTEND;VALUE=DATE:${nextDay(e.date)}
+SUMMARY:${esc(e.title)}
+DESCRIPTION:${esc(e.desc||'')}
+TRANSP:TRANSPARENT
+END:VEVENT
+`}out+='END:VCALENDAR
+';return out}
+function combineICS(){const texts=[state.six,state.ten,spiritualICS(),state.fast];const ev=[];for(const txt of texts){for(const m of txt.matchAll(/BEGIN:VEVENT
+[\s\S]*?
+END:VEVENT/g)){const blk=m[0];const k=(blk.match(/DTSTART;VALUE=DATE:(\d{8})/)||[])[1]||'99999999';ev.push([k,blk])}}ev.sort((a,b)=>a[0].localeCompare(b[0]));return header('修行日历（合并）','America/New_York','六斋日、十斋日、灵性与断食日合并订阅源。','#8E8E93')+ev.map(x=>x[1]).join('
+')+'
+END:VCALENDAR
+'}
+function download(name,txt){const blob=new Blob([txt],{type:'text/calendar;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
+async function load(){document.getElementById('status').textContent='正在载入…';const [six,ten,sp,fast]=await Promise.all([fetch('./six-zhai.ics').then(r=>r.text()),fetch('./extra-ten-zhai.ics').then(r=>r.text()),fetch('./spiritual.ics').then(r=>r.text()),fetch('./fasting.ics').then(r=>r.text())]);state.six=six;state.ten=ten;state.fast=fast;state.spiritual=parseEvents(sp);render();document.getElementById('status').textContent=`已载入灵性事件 ${state.spiritual.length} 条；断食日文件由自动流程维护。`}
+document.getElementById('loadBtn').onclick=load;document.getElementById('addBtn').onclick=()=>{state.spiritual.push({date:'2026-04-18',title:'灵性重要日',desc:'灵性：自定义重要日。'});render()};document.getElementById('saveSpiritual').onclick=()=>download('spiritual.ics',spiritualICS());document.getElementById('saveCombined').onclick=()=>download('combined.ics',combineICS());load();
+</script></body></html>
